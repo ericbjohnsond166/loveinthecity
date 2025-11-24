@@ -1,6 +1,7 @@
 /**
  * Smart Deep Links Handler
  * Intelligently routes deep links based on app state and user authentication
+ * Includes comprehensive logging for support debugging
  */
 
 export interface DeepLinkConfig {
@@ -28,10 +29,30 @@ export class DeepLinkManager {
   private sessionId: string;
   private currentUser: any = null;
   private navigationCallback: ((path: string) => void) | null = null;
+  private debugMode: boolean = true;
+  private supportLog: SupportRequest[] = [];
 
   constructor() {
     this.sessionId = this.generateSessionId();
     this.registerDefaultLinks();
+    this.log(`🚀 DeepLinkManager initialized with session: ${this.sessionId}`);
+  }
+
+  /**
+   * Enable/disable debug logging
+   */
+  setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled;
+    this.log(`Debug mode: ${enabled ? '🟢 ON' : '🔴 OFF'}`);
+  }
+
+  /**
+   * Internal logging
+   */
+  private log(message: string, data?: any): void {
+    if (this.debugMode) {
+      console.log(`[DeepLinkManager] ${message}`, data || '');
+    }
   }
 
   /**
@@ -39,6 +60,7 @@ export class DeepLinkManager {
    */
   setNavigationCallback(callback: (path: string) => void): void {
     this.navigationCallback = callback;
+    this.log('✅ Navigation callback registered');
   }
 
   /**
@@ -53,6 +75,7 @@ export class DeepLinkManager {
    */
   setCurrentUser(user: any): void {
     this.currentUser = user;
+    this.log(`👤 User context set: ${user?.name || 'Anonymous'}`);
   }
 
   /**
@@ -66,7 +89,11 @@ export class DeepLinkManager {
       screenResolution: `${screen.width}x${screen.height}`,
       timestamp: new Date().toISOString(),
       url: window.location.href,
-      referrer: document.referrer
+      referrer: document.referrer,
+      memoryUsage: (performance as any).memory ? {
+        usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
+        totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
+      } : 'N/A'
     };
   }
 
@@ -75,7 +102,7 @@ export class DeepLinkManager {
    */
   private handleSupportRequest(params: Record<string, string>): void {
     if (!this.currentUser) {
-      console.warn('No user context available for support request');
+      console.warn('[DeepLinkManager] ⚠️  No user context available for support request');
       return;
     }
 

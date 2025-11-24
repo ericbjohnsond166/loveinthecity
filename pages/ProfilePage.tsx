@@ -1,6 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, Edit2, Crown, Wallet, ChevronRight, CreditCard, Gift, LogOut, Headset } from 'lucide-react';
+import { StorageManager } from '../utils/localStorage';
+
+interface ProfileData {
+  id: string;
+  name: string;
+  age: number;
+  avatar: string;
+  isVip: boolean;
+  following: number;
+  fans: number;
+  wallet: number;
+}
 
 interface ProfilePageProps {
     onLogout: () => void;
@@ -8,6 +20,46 @@ interface ProfilePageProps {
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout }) => {
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const storage = StorageManager.getInstance();
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const userData = storage.get<ProfileData>('userProfile');
+        if (userData) {
+          setProfile(userData);
+          console.log('✅ Profile loaded from storage:', userData);
+        } else {
+          // Default profile if none exists
+          const defaultProfile: ProfileData = {
+            id: 'user_' + Math.random().toString(36).substr(2, 9),
+            name: 'Guest',
+            age: 28,
+            avatar: 'https://picsum.photos/200/200?random=' + Math.random(),
+            isVip: false,
+            following: 0,
+            fans: 0,
+            wallet: 0
+          };
+          storage.set('userProfile', defaultProfile);
+          setProfile(defaultProfile);
+          console.log('✅ Default profile created');
+        }
+      } catch (error) {
+        console.error('❌ Error loading profile:', error);
+      }
+    };
+    loadProfile();
+  }, [storage]);
+
+  if (!profile) {
+    return (
+      <div className="min-h-full bg-darker flex items-center justify-center">
+        <p className="text-white">Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-darker pb-20">
@@ -21,7 +73,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout }) => {
         <div className="flex items-center">
             <div className="relative">
                 <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-r from-primary to-purple-600">
-                    <img src="https://picsum.photos/200/200" alt="Me" className="w-full h-full rounded-full object-cover border-4 border-secondary" />
+                    <img src={profile.avatar} alt={profile.name} className="w-full h-full rounded-full object-cover border-4 border-secondary" />
                 </div>
                 <button className="absolute bottom-0 right-0 bg-blue-500 p-1.5 rounded-full border-2 border-secondary text-white">
                     <Edit2 size={12} />
@@ -30,17 +82,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout }) => {
             
             <div className="ml-6 flex-1">
                 <h2 className="text-2xl font-bold text-white flex items-center">
-                    Alex, 27
-                    <Crown size={20} className="ml-2 text-gold fill-gold" />
+                    {profile.name}, {profile.age}
+                    {profile.isVip && <Crown size={20} className="ml-2 text-gold fill-gold" />}
                 </h2>
-                <p className="text-gray-400 text-sm mb-3">ID: 8839201</p>
+                <p className="text-gray-400 text-sm mb-3">ID: {profile.id}</p>
                 <div className="flex space-x-4">
                     <div className="text-center">
-                        <span className="block font-bold text-white">128</span>
+                        <span className="block font-bold text-white">{profile.following}</span>
                         <span className="text-xs text-gray-500">Following</span>
                     </div>
                     <div className="text-center">
-                        <span className="block font-bold text-white">4.5k</span>
+                        <span className="block font-bold text-white">{profile.fans}</span>
                         <span className="text-xs text-gray-500">Fans</span>
                     </div>
                 </div>
@@ -72,7 +124,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout }) => {
                     <Wallet className="mr-2 text-blue-400" size={20} />
                     My Wallet
                 </h3>
-                <span className="text-2xl font-bold text-white">$450.00</span>
+                <span className="text-2xl font-bold text-white">${profile.wallet.toFixed(2)}</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <button className="bg-darker py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition">Deposit</button>

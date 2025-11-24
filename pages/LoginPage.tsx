@@ -1,11 +1,78 @@
-import React from 'react';
-import { Heart, Phone, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Phone, ArrowRight, AlertCircle } from 'lucide-react';
+import { StorageManager } from '../utils/localStorage';
 
 interface LoginPageProps {
   onLogin: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const storage = StorageManager.getInstance();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      // Validate inputs
+      if (!phone.trim()) {
+        setError('📱 Please enter your phone number');
+        setLoading(false);
+        return;
+      }
+
+      if (!password.trim()) {
+        setError('🔐 Please enter your password');
+        setLoading(false);
+        return;
+      }
+
+      // Simulate authentication
+      console.log('🔐 Authenticating user:', phone);
+      
+      // Create user session
+      const userSession = {
+        id: 'user_' + Math.random().toString(36).substr(2, 9),
+        phone,
+        isAuthenticated: true,
+        loginTime: new Date().toISOString(),
+        lastActive: Date.now()
+      };
+
+      // Store session (1 day TTL)
+      const sessionTTL = 24 * 60 * 60 * 1000; // 24 hours
+      storage.set('userSession', userSession, sessionTTL);
+      
+      // Create default profile if not exists
+      const userProfile = storage.get('userProfile');
+      if (!userProfile) {
+        storage.set('userProfile', {
+          id: userSession.id,
+          name: 'User',
+          age: 25,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${phone}`,
+          isVip: false,
+          following: 0,
+          fans: 0,
+          wallet: 0
+        });
+      }
+
+      console.log('✅ Login successful for:', phone);
+      setLoading(false);
+      onLogin();
+    } catch (err) {
+      console.error('❌ Login error:', err);
+      setError('❌ Login failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-full w-full bg-gradient-to-br from-primary to-secondary flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-gray-900">
       
@@ -27,13 +94,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
         {/* Login Form Card */}
         <div className="w-full bg-white/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl">
-            <div className="space-y-5">
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <AlertCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-5">
                 <div>
                     <label className="block text-gray-500 text-xs font-bold ml-3 mb-1 uppercase">Phone Number</label>
                     <input 
                         type="tel" 
                         placeholder="Enter your phone" 
-                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all font-medium"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        disabled={loading}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all font-medium disabled:opacity-50"
                     />
                 </div>
                 
@@ -42,22 +120,32 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     <input 
                         type="password" 
                         placeholder="Enter your password" 
-                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all font-medium"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={loading}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all font-medium disabled:opacity-50"
                     />
                 </div>
 
                 <div className="flex justify-end">
-                    <button className="text-primary text-sm font-bold hover:underline">Forgot Password?</button>
+                    <button 
+                      type="button"
+                      disabled={loading}
+                      className="text-primary text-sm font-bold hover:underline disabled:opacity-50"
+                    >
+                      Forgot Password?
+                    </button>
                 </div>
 
                 <button 
-                    onClick={onLogin}
-                    className="w-full bg-primary text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-primary/30 active:scale-95 transition-all flex items-center justify-center group"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-primary text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-primary/30 active:scale-95 transition-all flex items-center justify-center group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Start Dating
-                    <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                    {loading ? '🔄 Signing in...' : 'Start Dating'}
+                    {!loading && <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />}
                 </button>
-            </div>
+            </form>
         </div>
 
         {/* Footer Actions */}

@@ -1,6 +1,6 @@
 /**
  * Improved localStorage Management
- * Provides type-safe, validated storage with error handling
+ * Provides type-safe, validated storage with error handling and debugging
  */
 
 export interface StorageConfig {
@@ -21,13 +21,14 @@ const STORAGE_VERSION = 1;
 const STORAGE_PREFIX = 'loveinthecity_';
 
 /**
- * Enhanced localStorage manager with validation and TTL support
+ * Enhanced localStorage manager with validation, TTL support, and debugging
  */
 export class StorageManager {
   private static instance: StorageManager | null = null;
   private cache: Map<string, any> = new Map();
   private watchers: Map<string, Set<(value: any) => void>> = new Map();
   private initialized: boolean = false;
+  private debugMode: boolean = true; // Enable/disable debug logs
 
   private constructor() {
     // Don't initialize here - do it lazily
@@ -41,6 +42,23 @@ export class StorageManager {
       StorageManager.instance = new StorageManager();
     }
     return StorageManager.instance;
+  }
+
+  /**
+   * Enable/disable debug logging
+   */
+  setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled;
+    this.log(`Debug mode: ${enabled ? '🟢 ON' : '🔴 OFF'}`);
+  }
+
+  /**
+   * Internal logging function
+   */
+  private log(message: string, data?: any): void {
+    if (this.debugMode) {
+      console.log(`[StorageManager] ${message}`, data || '');
+    }
   }
 
   /**
@@ -58,7 +76,7 @@ export class StorageManager {
   private initializeCache(): void {
     try {
       if (typeof localStorage === 'undefined') {
-        console.warn('localStorage not available');
+        console.warn('[StorageManager] ⚠️  localStorage not available');
         return;
       }
       const keys = Object.keys(localStorage);
@@ -71,9 +89,9 @@ export class StorageManager {
           }
         }
       });
-      console.log('✅ Storage cache initialized with', this.cache.size, 'items');
+      this.log(`✅ Storage cache initialized with ${this.cache.size} items`);
     } catch (error) {
-      console.error('❌ Error initializing storage cache:', error);
+      console.error('[StorageManager] ❌ Error initializing storage cache:', error);
     }
   }
 
@@ -98,7 +116,7 @@ export class StorageManager {
       if (parsed.ttl) {
         const age = Date.now() - parsed.timestamp;
         if (age > parsed.ttl) {
-          console.log('⏰ Item expired:', fullKey);
+          this.log(`⏰ Item expired: ${fullKey.replace(STORAGE_PREFIX, '')}`);
           localStorage.removeItem(fullKey);
           return null;
         }
@@ -106,7 +124,7 @@ export class StorageManager {
 
       return parsed;
     } catch (error) {
-      console.error('❌ Error parsing storage item:', fullKey, error);
+      console.error('[StorageManager] ❌ Error parsing storage item:', fullKey, error);
       return null;
     }
   }
@@ -131,10 +149,10 @@ export class StorageManager {
       // Notify watchers
       this.notifyWatchers(key, value);
 
-      console.log('💾 Storage item set:', key);
+      this.log(`💾 Stored: ${key}${ttl ? ` (TTL: ${ttl}ms)` : ''}`);
       return true;
     } catch (error) {
-      console.error('❌ Error setting storage item:', key, error);
+      console.error('[StorageManager] ❌ Error setting storage item:', key, error);
       return false;
     }
   }
@@ -147,6 +165,7 @@ export class StorageManager {
       this.ensureInitialized();
       // Check cache first
       if (this.cache.has(key)) {
+        this.log(`📖 Retrieved from cache: ${key}`);
         return this.cache.get(key) as T;
       }
 
@@ -155,9 +174,11 @@ export class StorageManager {
 
       if (item) {
         this.cache.set(key, item.data);
+        this.log(`📖 Retrieved from storage: ${key}`);
         return item.data;
       }
 
+      this.log(`⚠️  Key not found: ${key}, using default`);
       return defaultValue ?? null;
     } catch (error) {
       console.error('❌ Error getting storage item:', key, error);
