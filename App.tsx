@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './components/BottomNav';
 import { HomePage } from './pages/HomePage';
 import { CommunityPage } from './pages/CommunityPage';
@@ -32,6 +32,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
+  return (
+    <HashRouter>
+      <AppContent isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
+    </HashRouter>
+  );
+}
+
+function AppContent({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: boolean; setIsAuthenticated: (val: boolean) => void }) {
+  const navigate = useNavigate();
+
   // Check authentication using StorageManager for consistency
   useEffect(() => {
     try {
@@ -47,7 +57,7 @@ export default function App() {
       console.error('Auth check error:', error);
       setIsAuthenticated(true);
     }
-  }, []);
+  }, [setIsAuthenticated]);
 
   const handleLogin = () => {
     // Both methods for compatibility, but primary is StorageManager
@@ -56,59 +66,67 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    console.log('🚀 LOGOUT INITIATED');
     // Clear all auth data
     localStorage.removeItem('funloves_token');
     const storage = require('./utils/localStorage').StorageManager.getInstance();
+    console.log('Removing userSession...');
     storage.remove('userSession');
+    console.log('Clearing userProfile...');
     storage.clearUserProfile();
+    console.log('Clearing all storage...');
     storage.clear(); // Clear all storage
+    console.log('Setting isAuthenticated to false...');
     setIsAuthenticated(false);
+    console.log('✅ LOGOUT COMPLETE - navigating to /login');
+    // Force navigation to login
+    setTimeout(() => {
+      navigate('/login', { replace: true });
+    }, 100);
   };
 
   return (
-    <HashRouter>
-      <Layout>
-        <Routes>
-          <Route path="/login" element={
-            isAuthenticated ? <Navigate to="/" replace /> : <LoginPage onLogin={handleLogin} />
-          } />
-          
-          <Route path="/" element={
-            isAuthenticated ? <HomePage /> : <Navigate to="/login" replace />
-          } />
-          
-          <Route path="/community" element={
-            isAuthenticated ? <CommunityPage /> : <Navigate to="/login" replace />
-          } />
-          
-          <Route path="/choose" element={
-            isAuthenticated ? <ChoosePage /> : <Navigate to="/login" replace />
-          } />
-          
-          <Route path="/hotel" element={
-            isAuthenticated ? <HotelPage /> : <Navigate to="/login" replace />
-          } />
-          
-          <Route path="/mine" element={
-            isAuthenticated ? <MinePage onLogout={handleLogout} /> : <Navigate to="/login" replace />
-          } />
+    <Layout>
+      <Routes>
+        <Route path="/login" element={
+          isAuthenticated ? <Navigate to="/" replace /> : <LoginPage onLogin={handleLogin} />
+        } />
+        
+        <Route path="/" element={
+          isAuthenticated ? <HomePage /> : <Navigate to="/login" replace />
+        } />
+        
+        <Route path="/community" element={
+          isAuthenticated ? <CommunityPage /> : <Navigate to="/login" replace />
+        } />
+        
+        <Route path="/choose" element={
+          isAuthenticated ? <ChoosePage /> : <Navigate to="/login" replace />
+        } />
+        
+        <Route path="/hotel" element={
+          isAuthenticated ? <HotelPage /> : <Navigate to="/login" replace />
+        } />
+        
+        <Route path="/mine" element={
+          isAuthenticated ? <MinePage onLogout={handleLogout} /> : <Navigate to="/login" replace />
+        } />
 
-           <Route path="/vip" element={
-            isAuthenticated ? <VipPage /> : <Navigate to="/login" replace />
-          } />
-          
-           <Route path="/messages" element={
-            isAuthenticated ? <MessagesPage /> : <Navigate to="/login" replace />
-          } />
+        <Route path="/vip" element={
+          isAuthenticated ? <VipPage /> : <Navigate to="/login" replace />
+        } />
+        
+        <Route path="/messages" element={
+          isAuthenticated ? <MessagesPage /> : <Navigate to="/login" replace />
+        } />
 
-          <Route path="/user/:id" element={
-            isAuthenticated ? <UserProfilePage /> : <Navigate to="/login" replace />
-          } />
-          
-          {/* Catch all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
-    </HashRouter>
+        <Route path="/user/:id" element={
+          isAuthenticated ? <UserProfilePage /> : <Navigate to="/login" replace />
+        } />
+        
+        {/* Catch all redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Layout>
   );
 }

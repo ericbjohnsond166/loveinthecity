@@ -80,7 +80,7 @@ export const MinePage: React.FC<MinePageProps> = ({ onLogout }) => {
             </div>
 
             {/* Logout */}
-            <button onClick={onLogout} className="w-full bg-white border border-gray-200 text-red-500 py-3.5 rounded-xl font-bold shadow-sm hover:bg-red-50 transition mb-6">
+            <button onClick={() => { console.log('Log Out button clicked'); onLogout(); }} className="w-full bg-white border border-gray-200 text-red-500 py-3.5 rounded-xl font-bold shadow-sm hover:bg-red-50 transition mb-6">
                 Log Out
             </button>
         </div>
