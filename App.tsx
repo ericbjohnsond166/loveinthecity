@@ -56,10 +56,12 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    // Clear both auth methods
+    // Clear all auth data
     localStorage.removeItem('funloves_token');
     const storage = require('./utils/localStorage').StorageManager.getInstance();
+    storage.remove('userSession');
     storage.clearUserProfile();
+    storage.clear(); // Clear all storage
     setIsAuthenticated(false);
   };
 
