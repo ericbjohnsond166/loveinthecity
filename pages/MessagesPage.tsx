@@ -1,357 +1,213 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, Copy, Check, Trash2, Search, Bell, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageCircle, Send, Copy, Check } from 'lucide-react';
 import { MOCK_USERS } from '../constants';
-import { StorageManager } from '../utils/localStorage';
-
-interface Message {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  text: string;
-  timestamp: number;
-  read: boolean;
-}
-
-interface Conversation {
-  id: string;
-  userId: string;
-  userName: string;
-  userImage: string;
-  lastMessage: string;
-  lastMessageTime: number;
-  unreadCount: number;
-  messages: Message[];
-}
 
 export const MessagesPage: React.FC = () => {
-  const storage = StorageManager.getInstance();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [messageInput, setMessageInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    issue: 'inquiry',
+    selectedProfile: '',
+    message: ''
+  });
   const [copied, setCopied] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const telegramUrl = 'https://t.me/loveinthecity';
   const whatsappUrl = 'https://wa.me/1234567890';
 
-  // Initialize conversations from storage
-  useEffect(() => {
-    const loadConversations = () => {
-      const savedConversations = storage.get<Conversation[]>('conversations');
-      if (savedConversations && savedConversations.length > 0) {
-        setConversations(savedConversations);
-        setSelectedConversation(savedConversations[0]);
-      } else {
-        // Create default conversations
-        const defaultConversations: Conversation[] = MOCK_USERS.filter(u => u.id !== 'support')
-          .slice(0, 5)
-          .map((user, index) => ({
-            id: `conv_${user.id}`,
-            userId: user.id,
-            userName: user.name,
-            userImage: user.images[0],
-            lastMessage: 'Hi! How are you?',
-            lastMessageTime: Date.now() - (index * 60000),
-            unreadCount: index % 2 === 0 ? index : 0,
-            messages: [
-              {
-                id: 'msg_1',
-                conversationId: `conv_${user.id}`,
-                senderId: user.id,
-                text: 'Hi! How are you?',
-                timestamp: Date.now() - 300000,
-                read: true
-              },
-              {
-                id: 'msg_2',
-                conversationId: `conv_${user.id}`,
-                senderId: 'me',
-                text: 'I\'m doing great! How about you?',
-                timestamp: Date.now() - 240000,
-                read: true
-              },
-              {
-                id: 'msg_3',
-                conversationId: `conv_${user.id}`,
-                senderId: user.id,
-                text: 'Great! Would you like to meet up?',
-                timestamp: Date.now() - 60000,
-                read: false
-              }
-            ]
-          }));
-        storage.set('conversations', defaultConversations);
-        setConversations(defaultConversations);
-        setSelectedConversation(defaultConversations[0]);
-      }
-    };
+  const messagePreview = `Hi! My name is ${formData.name || 'Friend'}, email: ${formData.email || 'your@email.com'}.${
+    formData.issue === 'reserve'
+      ? ` I'm interested in ${MOCK_USERS.find(u => u.id === formData.selectedProfile)?.name || 'someone'}. ${formData.message}`
+      : ` ${formData.message}`
+  }`;
 
-    loadConversations();
-  }, [storage]);
-
-  // Auto-scroll to latest message
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedConversation?.messages]);
-
-  const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedConversation) return;
-
-    const newMessage: Message = {
-      id: `msg_${Date.now()}`,
-      conversationId: selectedConversation.id,
-      senderId: 'me',
-      text: messageInput,
-      timestamp: Date.now(),
-      read: true
-    };
-
-    const updatedConversations = conversations.map(conv => {
-      if (conv.id === selectedConversation.id) {
-        return {
-          ...conv,
-          messages: [...conv.messages, newMessage],
-          lastMessage: messageInput,
-          lastMessageTime: Date.now()
-        };
-      }
-      return conv;
-    });
-
-    setConversations(updatedConversations);
-    storage.set('conversations', updatedConversations);
-    setSelectedConversation({
-      ...selectedConversation,
-      messages: [...selectedConversation.messages, newMessage],
-      lastMessage: messageInput,
-      lastMessageTime: Date.now()
-    });
-    setMessageInput('');
-  };
-
-  const handleDeleteConversation = (conversationId: string) => {
-    const filtered = conversations.filter(c => c.id !== conversationId);
-    setConversations(filtered);
-    storage.set('conversations', filtered);
-    if (selectedConversation?.id === conversationId) {
-      setSelectedConversation(filtered[0] || null);
-    }
-  };
-
-  const filteredConversations = conversations.filter(conv =>
-    conv.userName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const copyContactInfo = () => {
-    if (!selectedConversation) return;
-    const info = `Contact: ${selectedConversation.userName}\nStarted chatting to connect!`;
-    navigator.clipboard.writeText(info);
+  const copyMessage = () => {
+    navigator.clipboard.writeText(messagePreview);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
-
   return (
-    <div className="min-h-full bg-gray-50 flex flex-col pb-20 font-sans text-gray-900">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MessageCircle size={24} className="text-primary" />
+    <div className="min-h-full bg-gradient-to-b from-white to-gray-50 pb-20 font-sans text-gray-900">
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <MessageCircle size={32} className="text-primary" />
+            <h1 className="text-3xl font-bold">Contact Us</h1>
+          </div>
+          <p className="text-gray-600 text-sm">Connect with our team via Telegram or WhatsApp to reserve your match!</p>
+        </div>
+
+        {/* Contact Form */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+          {/* Name & Email */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <h1 className="text-xl font-bold">Messages</h1>
-              {totalUnread > 0 && (
-                <p className="text-xs text-red-500">
-                  {totalUnread} unread message{totalUnread !== 1 ? 's' : ''}
-                </p>
-              )}
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Your Name</label>
+              <input
+                type="text"
+                placeholder="Enter your name..."
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-primary focus:bg-white focus:outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Your Email</label>
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-primary focus:bg-white focus:outline-none transition"
+              />
             </div>
           </div>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition">
-            <Bell size={20} className="text-gray-600" />
+
+          {/* Issue Type */}
+          <div className="mb-4">
+            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Reason for Contact</label>
+            <select
+              value={formData.issue}
+              onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-primary focus:bg-white focus:outline-none transition"
+            >
+              <option value="inquiry">General Inquiry</option>
+              <option value="reserve">Reserve a Profile</option>
+              <option value="support">Need Help</option>
+            </select>
+          </div>
+
+          {/* Profile Selection */}
+          {formData.issue === 'reserve' && (
+            <div className="mb-4">
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Which profile interests you?</label>
+              <select
+                value={formData.selectedProfile}
+                onChange={(e) => setFormData({ ...formData, selectedProfile: e.target.value })}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-primary focus:bg-white focus:outline-none transition"
+              >
+                <option value="">Select a profile...</option>
+                {MOCK_USERS.filter(u => u.id !== 'support').map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}, {user.age} - {user.residence}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Message */}
+          <div className="mb-4">
+            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Additional Message (optional)</label>
+            <textarea
+              placeholder="Tell us more about yourself or your preferences..."
+              value={formData.message}
+              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-primary focus:bg-white focus:outline-none transition resize-none h-24"
+            />
+          </div>
+
+          {/* Message Preview */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Your Message Preview:</p>
+            <p className="text-sm text-gray-700 leading-relaxed p-3 bg-white rounded-lg border border-gray-100">
+              {messagePreview}
+            </p>
+          </div>
+
+          {/* Copy Button */}
+          <button
+            onClick={copyMessage}
+            className="w-full bg-gradient-to-r from-primary to-pink-600 text-white font-bold py-3 rounded-xl hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {copied ? (
+              <>
+                <Check size={18} />
+                <span>Copied! Ready to share</span>
+              </>
+            ) : (
+              <>
+                <Copy size={18} />
+                <span>Copy Message to Clipboard</span>
+              </>
+            )}
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Conversations List */}
-        <div className="w-full md:w-80 border-r border-gray-200 overflow-y-auto">
-          {filteredConversations.length === 0 ? (
-            <div className="p-6 text-center">
-              <MessageCircle size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 text-sm">No conversations yet</p>
+        {/* Service Card */}
+        <div className="bg-gradient-to-br from-primary to-pink-600 text-white rounded-3xl p-8 mb-8 shadow-lg relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="relative z-10">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-sm">
+              <MessageCircle size={32} className="text-white" />
             </div>
-          ) : (
-            filteredConversations.map(conv => (
-              <div
-                key={conv.id}
-                onClick={() => setSelectedConversation(conv)}
-                className={`p-4 border-b border-gray-100 cursor-pointer transition ${
-                  selectedConversation?.id === conv.id
-                    ? 'bg-primary/5 border-l-4 border-primary'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <img
-                    src={conv.userImage}
-                    alt={conv.userName}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm truncate">{conv.userName}</h3>
-                      <span className="text-xs text-gray-400">
-                        {new Date(conv.lastMessageTime).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 truncate mt-1">{conv.lastMessage}</p>
-                    {conv.unreadCount > 0 && (
-                      <div className="inline-block bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mt-2">
-                        {conv.unreadCount}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+            <h2 className="text-2xl font-bold mb-2">Connect With Our Team</h2>
+            <p className="text-white/90 text-sm leading-relaxed">
+              Copy your message above and share it on Telegram or WhatsApp. Our specialists will match you with your perfect connection instantly!
+            </p>
+          </div>
         </div>
 
-        {/* Chat Area */}
-        {selectedConversation ? (
-          <div className="flex-1 hidden md:flex flex-col">
-            {/* Chat Header */}
-            <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img
-                  src={selectedConversation.userImage}
-                  alt={selectedConversation.userName}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <h2 className="font-bold text-sm">{selectedConversation.userName}</h2>
-                  <p className="text-xs text-gray-500">Online</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={copyContactInfo}
-                  className="p-2 hover:bg-gray-100 rounded-full transition"
-                  title="Copy contact info"
-                >
-                  {copied ? (
-                    <Check size={20} className="text-green-500" />
-                  ) : (
-                    <Copy size={20} className="text-gray-600" />
-                  )}
-                </button>
-                <button
-                  onClick={() => handleDeleteConversation(selectedConversation.id)}
-                  className="p-2 hover:bg-red-50 rounded-full transition"
-                  title="Delete conversation"
-                >
-                  <Trash2 size={20} className="text-gray-600 hover:text-red-500" />
-                </button>
-              </div>
-            </div>
+        {/* Contact Options */}
+        <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">Connect Now</h3>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-              {selectedConversation.messages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.senderId === 'me' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs px-4 py-2 rounded-2xl ${
-                      msg.senderId === 'me'
-                        ? 'bg-primary text-white rounded-br-none'
-                        : 'bg-gray-200 text-gray-900 rounded-bl-none'
-                    }`}
-                  >
-                    <p className="text-sm">{msg.text}</p>
-                    <span className="text-xs opacity-70 mt-1 block">
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
+        <div className="space-y-3 mb-8">
+          {/* Telegram */}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center p-5 bg-white rounded-2xl border border-gray-200 hover:border-blue-400 hover:shadow-lg active:scale-95 transition-all shadow-sm group cursor-pointer"
+          >
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4 group-hover:bg-blue-200 transition">
+              <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295-.41 0-.34-.145-.477-.477l-2.09-6.881c-.135-.43-.033-.662.352-.662l9.155-3.527c.41-.126.647.104.535.617z" />
+              </svg>
             </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900 mb-0.5">Telegram</h4>
+              <p className="text-xs text-gray-500">Paste message → Open chat</p>
+            </div>
+            <div className="text-blue-600 group-hover:text-blue-700 transition">
+              <Send size={20} />
+            </div>
+          </a>
 
-            {/* Message Input */}
-            <div className="border-t border-gray-200 p-4 bg-white">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Type a message..."
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1 px-4 py-3 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim()}
-                  className="bg-primary text-white p-3 rounded-full hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center"
-                >
-                  <Send size={20} />
-                </button>
-              </div>
+          {/* WhatsApp */}
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center p-5 bg-white rounded-2xl border border-gray-200 hover:border-green-400 hover:shadow-lg active:scale-95 transition-all shadow-sm group cursor-pointer"
+          >
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4 group-hover:bg-green-200 transition">
+              <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004c-1.052 0-2.081.405-2.84 1.12-.78.725-1.215 1.708-1.215 2.748 0 1.486.772 2.934 2.122 3.791 1.075.67 2.631 1.123 4.001 1.123h.004c2.176 0 4.236-1.41 5.115-3.44.559-1.331.665-2.432.318-3.519-.464-1.402-1.823-2.777-3.588-3.289-.52-.15-1.061-.226-1.629-.226 1.326-1.26 2.08-3.023 2.08-4.99 0-.268-.011-.533-.032-.795 1.326 1.26 2.08 3.023 2.08 4.99 0 .268.011.533.032.795-1.326-1.26-2.08-3.023-2.08-4.99 0-1.967.754-3.73 2.08-4.99-.021.262-.032.527-.032.795 0 1.967.754 3.73 2.08 4.99-1.326 1.26-2.08 3.023-2.08 4.99 0 .268.011.533.032.795z" />
+              </svg>
             </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900 mb-0.5">WhatsApp</h4>
+              <p className="text-xs text-gray-500">Paste message → Send directly</p>
+            </div>
+            <div className="text-green-600 group-hover:text-green-700 transition">
+              <Send size={20} />
+            </div>
+          </a>
+        </div>
 
-            {/* Quick Actions */}
-            <div className="border-t border-gray-200 p-4 bg-gray-50 space-y-2">
-              <p className="text-xs font-bold text-gray-500 uppercase">Quick Links</p>
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href={telegramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition text-center font-medium"
-                >
-                  💬 Telegram Support
-                </a>
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs bg-green-50 text-green-600 p-2 rounded-lg hover:bg-green-100 transition text-center font-medium"
-                >
-                  📱 WhatsApp Help
-                </a>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 hidden md:flex items-center justify-center text-center">
-            <div>
-              <MessageCircle size={64} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">Select a conversation to start chatting</p>
-            </div>
-          </div>
-        )}
+        {/* Instructions */}
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <h4 className="font-bold text-blue-900 mb-2 text-sm">📋 How It Works:</h4>
+          <ul className="text-xs text-blue-800 space-y-1">
+            <li>✓ Fill in your details above</li>
+            <li>✓ Select the profile you're interested in (if applicable)</li>
+            <li>✓ Copy your pre-filled message</li>
+            <li>✓ Paste it to Telegram or WhatsApp</li>
+            <li>✓ Our team will match you instantly!</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
