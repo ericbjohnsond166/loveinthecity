@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MessageCircle, Send, Copy, Check } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { MOCK_USERS } from '../constants';
 import { StorageManager } from '../utils/localStorage';
 
