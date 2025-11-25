@@ -30,7 +30,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false); // START AS FALSE - require explicit login
 
   return (
     <HashRouter>
@@ -47,17 +47,28 @@ function AppContent({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: 
     try {
       const storage = require('./utils/localStorage').StorageManager.getInstance();
       const userSession = storage.get('userSession');
+      console.log('🔍 Auth check on mount:', userSession ? 'Session found' : 'No session');
+      
       if (userSession && userSession.isAuthenticated) {
+        console.log('✅ Valid session found, setting authenticated = true');
         setIsAuthenticated(true);
       } else {
-        // Start authenticated by default
-        setIsAuthenticated(true);
+        console.log('⛔ No valid session, keeping authenticated = false');
+        // Don't set to false, just let it stay false (default)
       }
     } catch (error) {
       console.error('Auth check error:', error);
-      setIsAuthenticated(true);
+      // On error, stay logged out (safer)
     }
   }, [setIsAuthenticated]);
+
+  // CRITICAL: Watch for logout (isAuthenticated change) and navigate
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log('🔴 isAuthenticated is FALSE - executing navigation to /login');
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = () => {
     // Both methods for compatibility, but primary is StorageManager
@@ -70,19 +81,16 @@ function AppContent({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: 
     // Clear all auth data
     localStorage.removeItem('funloves_token');
     const storage = require('./utils/localStorage').StorageManager.getInstance();
-    console.log('Removing userSession...');
+    console.log('Step 1️⃣ Removing userSession...');
     storage.remove('userSession');
-    console.log('Clearing userProfile...');
+    console.log('Step 2️⃣ Clearing userProfile...');
     storage.clearUserProfile();
-    console.log('Clearing all storage...');
-    storage.clear(); // Clear all storage
-    console.log('Setting isAuthenticated to false...');
+    console.log('Step 3️⃣ Clearing all storage...');
+    storage.clear();
+    console.log('Step 4️⃣ Setting isAuthenticated to false...');
+    // This state change will trigger the useEffect above which handles navigation
     setIsAuthenticated(false);
-    console.log('✅ LOGOUT COMPLETE - navigating to /login');
-    // Force navigation to login
-    setTimeout(() => {
-      navigate('/login', { replace: true });
-    }, 100);
+    console.log('✅ LOGOUT STATE CHANGE COMPLETE - useEffect will handle navigation');
   };
 
   return (
